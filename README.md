@@ -38,6 +38,7 @@ Ademais, utilizando-se dos conhecimentos adquiridos na disciplina de Inteligênc
 ## Referências
 
 MARCONDES, José Antonio Miguel. Diabete melito: fisiopatologia e tratamento. Revista da Faculdade de Ciências Médicas de Sorocaba, [S. l.], v. 5, n. 1, p. 18–26, 2007. Disponível em: https://revistas.pucsp.br/index.php/RFCMS/article/view/117. Acesso em: 24 mar. 2026.
+
 Rakesh Kolipaka, and Ranjith Kumar Digutla. (2025). Diabetes Health Indicators Dataset [Data set]. Kaggle. https://doi.org/10.34740/KAGGLE/DSV/13128284
 
 
