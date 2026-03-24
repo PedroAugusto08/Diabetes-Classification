@@ -70,7 +70,7 @@ Houve colunas auxiliares removidas no experimento atual (sendo elas `diabetes_st
 
 ## Etapas de Pré-processamento 
 
-As etapas atuais estão implementadas em `Diabetes-Classification/src/preprocessing.py`, por meio da função `load_and_prepare_data(path, n_samples)`, esta segue o fluxo apresentado:
+As etapas iniciais estão implementadas em `Diabetes-Classification/src/preprocessing.py`, por meio da função `load_and_prepare_data(path, n_samples)`, esta segue o fluxo apresentado:
 
 1 - Leitura da base com a biblioteca `pandas`.
 
@@ -115,6 +115,22 @@ X_train, X_test, y_train, y_test = train_test_split(
   random_state=42
 )
 ```
+A seleção de atributos à posteriori foi executada devido à dois fatores que se correlacionam, primordialmente esta base de dados possuía uma gama densa de atributos quando tem-se em vista que grande parte deles não possui correlação em alguma escala com a previsão da doença, sendo assim optou-se por implementar esta etapa de processamento através um método de seleção embarcado (sendo assim, parte interna e natural dos algoritmos selecionados para avaliação), uma floresta aleatória é um meta-estimador que ajusta vários classificadores de árvore de decisão em diversas subamostras do conjunto de dados e usa a média para melhorar a precisão preditiva e controlar o sobreajuste. Tal implementação pode ser vista no trecho a seguir:
+
+```python
+def _get_feature_selector() -> SelectFromModel:
+    # cria o seletor de atributos com base na importância dos atributos disponíveis
+    selector_estimator = RandomForestClassifier(
+        n_estimators=200, # padrão em 100
+        random_state=42,
+        n_jobs=-1, # usar todos processadores
+    )
+    return SelectFromModel(
+        estimator=selector_estimator,
+        threshold="median",
+    )
+```
+
 
 
 ## Como Executar 
