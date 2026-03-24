@@ -115,8 +115,21 @@ X_train, X_test, y_train, y_test = train_test_split(
   random_state=42
 )
 ```
+A seleção de atributos à posteriori foi executada devido à dois fatores que se correlacionam, primordialmente esta base de dados possuía uma gama densa de atributos quando tem-se em vista que grande parte deles não possui correlação em alguma escala com a previsão da doença, sendo assim optou-se por implementar esta etapa de processamento que pode ser vista no trecho a seguir:
 
-
+```python
+def _get_feature_selector() -> SelectFromModel:
+    # cria o seletor de atributos com base na importância dos atributos disponíveis
+    selector_estimator = RandomForestClassifier(
+        n_estimators=200,
+        random_state=42,
+        n_jobs=-1,
+    )
+    return SelectFromModel(
+        estimator=selector_estimator,
+        threshold="median",
+    )
+```
 ## Como Executar 
 
 
