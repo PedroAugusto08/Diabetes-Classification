@@ -68,3 +68,36 @@ def get_all_models() -> dict[str, Pipeline]:
         "SVM": get_svm_pipeline(),
         "DecisionTree": get_dt_pipeline(),
     }
+
+def get_selected_feature_names(
+    trained_pipeline: Pipeline,
+    feature_names: list[str],
+) -> list[str]:
+    # Retorna os nomes das features escolhidas pelo seletor do pipeline.
+    if "feature_selection" not in trained_pipeline.named_steps:
+        raise ValueError("O pipeline não possui a etapa 'feature_selection'.")
+
+    selector = trained_pipeline.named_steps["feature_selection"]
+
+    if not hasattr(selector, "get_support"):
+        raise TypeError(
+            "A etapa 'feature_selection' não suporta get_support()."
+        )
+
+    try:
+        support_mask = selector.get_support()
+    except Exception as exc:
+        raise ValueError(
+            "A etapa de seleção ainda não foi treinada. Execute fit antes."
+        ) from exc
+
+    if len(feature_names) != len(support_mask):
+        raise ValueError(
+            "A quantidade de feature_names não corresponde ao número de atributos vistos pelo pipeline."
+        )
+
+    return [
+        feature_name
+        for feature_name, was_selected in zip(feature_names, support_mask)
+        if was_selected
+    ]
