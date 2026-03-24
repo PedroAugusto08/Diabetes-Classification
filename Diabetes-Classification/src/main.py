@@ -43,8 +43,8 @@ def main() -> None:
 	project_root = Path(__file__).resolve().parents[1]
 	dataset_path = project_root / "data" / "diabetes_dataset.csv"
 
-	n_samples_input = input("Quantidade de amostras (Enter para 1000): ").strip()
-	n_samples = int(n_samples_input) if n_samples_input else 1000
+	n_samples_input = input("Quantidade de amostras (Enter para 10000): ").strip()
+	n_samples = int(n_samples_input) if n_samples_input else 10000
 
 	X_train, X_test, y_train, y_test, feature_names = load_and_prepare_data(
 		path=str(dataset_path),
