@@ -1,5 +1,5 @@
 <p align="center"> 
-  <img src="imgs/logo_azul.png" alt="CEFET-MG" width="100px" height="100px">
+  <img src="Diabetes-Classification/imgs/logo_azul.png" alt="CEFET-MG" width="100px" height="100px">
 </p>
 
 <h1 align="center">
