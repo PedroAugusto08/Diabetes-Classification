@@ -3,6 +3,8 @@ Este módulo define os modelos e seus passos de pré-processamento
 ( seleção de atributos e, quando necessário, padronização ).
 """
 
+import pandas as pd
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.neighbors import KNeighborsClassifier
@@ -69,11 +71,13 @@ def get_all_models() -> dict[str, Pipeline]:
         "DecisionTree": get_dt_pipeline(),
     }
 
+
 def get_selected_feature_names(
     trained_pipeline: Pipeline,
     feature_names: list[str],
 ) -> list[str]:
     # Retorna os nomes das features escolhidas pelo seletor do pipeline.
+    # Garante que o pipeline tenha a etapa esperada.
     if "feature_selection" not in trained_pipeline.named_steps:
         raise ValueError("O pipeline não possui a etapa 'feature_selection'.")
 
@@ -96,8 +100,90 @@ def get_selected_feature_names(
             "A quantidade de feature_names não corresponde ao número de atributos vistos pelo pipeline."
         )
 
+    # Mantém apenas os nomes cuja posição foi marcada como selecionada.
     return [
         feature_name
         for feature_name, was_selected in zip(feature_names, support_mask)
         if was_selected
     ]
+
+
+def get_selected_feature_importances(
+    trained_pipeline: Pipeline,
+    feature_names: list[str],
+) -> list[tuple[str, float]]:
+    # Retorna (feature, importância) para as features selecionadas.
+    
+    # Valida se a etapa de seleção existe no pipeline treinado.
+    if "feature_selection" not in trained_pipeline.named_steps:
+        raise ValueError("O pipeline não possui a etapa 'feature_selection'.")
+
+    selector = trained_pipeline.named_steps["feature_selection"]
+
+    # A máscara booleana indica quais colunas foram mantidas.
+    try:
+        support_mask = selector.get_support()
+    except Exception as exc:
+        raise ValueError(
+            "A etapa de seleção ainda não foi treinada. Execute fit antes."
+        ) from exc
+
+    if len(feature_names) != len(support_mask):
+        raise ValueError(
+            "A quantidade de feature_names não corresponde ao número de atributos vistos pelo pipeline."
+        )
+
+    if not hasattr(selector, "estimator_"):
+        raise ValueError(
+            "O estimador interno do seletor não foi ajustado. Execute fit antes."
+        )
+
+    selector_estimator = selector.estimator_
+
+    if hasattr(selector_estimator, "feature_importances_"):
+        # Caminho principal para modelos baseados em árvore.
+        full_importances = selector_estimator.feature_importances_
+    elif hasattr(selector_estimator, "coef_"):
+        # Fallback para estimadores lineares; média do valor absoluto dos coeficientes.
+        coef = selector_estimator.coef_
+        full_importances = np.mean(np.abs(coef), axis=0)
+    else:
+        raise TypeError(
+            "O estimador do seletor não expõe feature_importances_ nem coef_."
+        )
+
+    selected_importances = [
+        float(importance)
+        for importance, was_selected in zip(full_importances, support_mask)
+        if was_selected
+    ]
+    selected_names = [
+        feature_name
+        for feature_name, was_selected in zip(feature_names, support_mask)
+        if was_selected
+    ]
+
+    # Ordena do maior peso para o menor para facilitar análise.
+    ranked = sorted(
+        zip(selected_names, selected_importances),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+
+    return ranked
+
+
+def get_feature_importances_df(
+    trained_pipeline: Pipeline,
+    feature_names: list[str],
+) -> pd.DataFrame:
+    # Retorna um DataFrame com as features selecionadas e suas importâncias.
+    ranked = get_selected_feature_importances(
+        trained_pipeline=trained_pipeline,
+        feature_names=feature_names,
+    )
+
+    return pd.DataFrame(
+        ranked,
+        columns=["feature", "importance"],
+    )
