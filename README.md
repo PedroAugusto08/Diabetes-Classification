@@ -33,7 +33,12 @@ Desenvolvimento de um experimento que contempla análise e compreensão dos dado
 
 Segundo José Antonio Miguel Marcondes (2003), o diabete afeta, aproximadamente, dez milhões de brasileiros e sua incidência está aumentando não só no Brasil, mas em todo o mundo, principalmente o diabetes tipo 2, cuja prevalência tem aumentado significamente em adolescentes e adultos jovens. Tendo isto em vista, a classificação de pacientes (neste contexto, dentro um grupo selecionado de dados) torna-se de suma importância para previsão e profilaxia do distúrbio.
 
-Ademais, utilizando-se dos conhecimentos adquiridos na disciplina de Inteligência Computacional acerca da análise e compreensão deste dados, almejando-se um bom experimento devido à sua reprodutibilidade, transparência e solidez científica. A base de dados utilizada foi retirada do Kaggle, sintetizada por Mohan Krishna Thalla seguindo relações médicas e de saúde pública comumente aceitas e amplamente relatadas em diversos estudos e fontes públicas.
+Ademais, utilizando-se dos conhecimentos adquiridos na disciplina de Inteligência Computacional acerca da análise e compreensão deste dados, almejando-se um bom experimento devido à sua reprodutibilidade, transparência e solidez científica. A base de dados utilizada foi retirada do Kaggle, sintetizada por Mohan Krishna Thalla seguindo relações médicas e de saúde pública comumente aceitas e amplamente relatadas em diversos estudos e fontes públicas. A base, por si só, foi tratada posteriormente de acordo com as etapas previstas pelas orientações do trabalho, seguindo a estrutura resumida à seguir:
+
+- **Escolha do Conjunto de Dados**: O conjunto de dados escolhido enquadra-se numa tarefa de classificação binária, contém atributos de tipos distintos (como idade que é um número inteiro e gênero que é uma string), com presença de um desafio condizente com a realidade (excesso de atributos que serão selecionados posteriormente) e com documentação pública no Kaggle.
+- **Análise e Compreensão dos Dados**: Identificou-se os problemas à serem resolvidos quando tange os obstáculos da ciência dos dados, além do problema ser em essência de classificação (entre ter ou não diabetes). Além do pré-processamento e metodologia experimental.
+
+
 
 ## Referências
 
