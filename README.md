@@ -7,7 +7,7 @@ Diabetes Classification
 </h1>
 
 <h3 align="center">
-Utilização de Inteligência Computacional para
+Desenvolvimento de um experimento que contempla análise e compreensão dos dados, desde pré-processamento à definição de uma metodologia experimental adequada para a classificação de pacientes com Diabete.
 </h3>
 
 <div align="center">
@@ -30,3 +30,10 @@ Utilização de Inteligência Computacional para
 
 
 ## Sobre o Projeto
+
+Segundo José Antonio Miguel Marcondes (2003), o diabete afeta, aproximadamente, dez milhões de brasileiros e sua incidência está aumentando não só no Brasil, mas em todo o mundo, principalmente o diabetes tipo 2, cuja prevalência tem aumentado significamente em adolescentes e adultos jovens. Tendo isto em vista, a classificação de pacientes (neste contexto, dentro um grupo selecionado de dados) torna-se de suma importância para previsão e 
+
+## Referências
+
+MARCONDES, José Antonio Miguel. Diabete melito: fisiopatologia e tratamento. Revista da Faculdade de Ciências Médicas de Sorocaba, [S. l.], v. 5, n. 1, p. 18–26, 2007. Disponível em: https://revistas.pucsp.br/index.php/RFCMS/article/view/117. Acesso em: 24 mar. 2026.
+
