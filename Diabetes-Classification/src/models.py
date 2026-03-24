@@ -24,7 +24,7 @@ def _get_feature_selector() -> SelectFromModel:
 
     return SelectFromModel(
         estimator=selector_estimator,
-        threshold="median",
+        threshold="1.2*median",
     )
 
 

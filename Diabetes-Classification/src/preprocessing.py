@@ -1,10 +1,12 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
+
+
 def load_and_prepare_data(path, n_samples):
     df = pd.read_csv(path) 
     print(f"Dataset original: {len(df)} linhas")
-    # amostragem estratificada
+    # Amostragem estratificada
     if n_samples < len(df):
         df, _ = train_test_split(
             df,
@@ -14,28 +16,54 @@ def load_and_prepare_data(path, n_samples):
         )
     df = df.reset_index(drop=True)
     print(f"Dataset reduzido: {len(df)} linhas")
-    # separar atributos e alvo
+    # Separar atributos e alvo
     X = df.drop(columns=[
         "diagnosed_diabetes",
         "diabetes_stage",
         "diabetes_risk_score"
-    ]).values
+    ])
     y = df["diagnosed_diabetes"].values
-    # split treino/teste
+    # Split treino/teste
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
         test_size=0.2,
         stratify=y,
         random_state=42
     )
-    # codificação de atributos categóricos
-    encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
-    X_train = encoder.fit_transform(X_train)
-    X_test = encoder.transform(X_test)    
+    # Separa colunas categóricas e numéricas para evitar one-hot em variáveis contínuas.
+    categorical_cols = X_train.select_dtypes(
+        include=["object", "category", "bool"]
+    ).columns.tolist()
+    numeric_cols = [
+        col for col in X_train.columns
+        if col not in categorical_cols
+    ]
 
-    print("\nDistribuição das classes:")
-    print("Treino:", pd.Series(y_train).value_counts(normalize=True))
-    print("Teste :", pd.Series(y_test).value_counts(normalize=True))
-    return X_train, X_test, y_train, y_test
+    X_train_num = X_train[numeric_cols].reset_index(drop=True)
+    X_test_num = X_test[numeric_cols].reset_index(drop=True)
 
-load_and_prepare_data("Diabetes-Classification/data/diabetes_dataset.csv", n_samples=1000)
+    if categorical_cols:
+        # One-hot somente nas colunas categóricas.
+        encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
+        X_train_cat = encoder.fit_transform(X_train[categorical_cols])
+        X_test_cat = encoder.transform(X_test[categorical_cols])
+
+        cat_feature_names = encoder.get_feature_names_out(categorical_cols).tolist()
+        X_train_cat_df = pd.DataFrame(X_train_cat, columns=cat_feature_names)
+        X_test_cat_df = pd.DataFrame(X_test_cat, columns=cat_feature_names)
+
+        X_train_final = pd.concat([X_train_num, X_train_cat_df], axis=1)
+        X_test_final = pd.concat([X_test_num, X_test_cat_df], axis=1)
+        feature_names = X_train_final.columns.tolist()
+    else:
+        X_train_final = X_train_num
+        X_test_final = X_test_num
+        feature_names = numeric_cols
+
+    return (
+        X_train_final.to_numpy(),
+        X_test_final.to_numpy(),
+        y_train,
+        y_test,
+        feature_names,
+    )
