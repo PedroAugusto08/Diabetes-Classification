@@ -36,11 +36,11 @@ Segundo José Antonio Miguel Marcondes (2003), o diabete afeta aproximadamente d
 Este trabalho, desenvolvido na disciplina de Inteligência Computacional, utiliza a base pública **Diabetes Health Indicators Dataset** (Kaggle), com `100.000` registros e `31` atributos, para um problema de **classificação binária** cujo alvo é `diagnosed_diabetes` (`0` ou `1`). A base reúne variáveis sociodemográficas, hábitos de vida, histórico clínico e biomarcadores, o que a torna adequada ao enunciado por conter atributos heterogêneos e permitir uma metodologia experimental realista.
 
 
-## Metodologia Adotada (Pré-processamento + Modelagem)
+## Metodologia Adotada e Consolidação no Código
 
-As implementações principais estão em `Diabetes-Classification/src/preprocessing.py`, `Diabetes-Classification/src/models.py` e `Diabetes-Classification/src/main.py`.
+As implementações principais estão em `Diabetes-Classification/src/preprocessing.py`, `Diabetes-Classification/src/models.py` e `Diabetes-Classification/src/main.py`. O fluxo foi simplificado para priorizar o que o enunciado e a orientação docente cobram com maior ênfase: **processamento dos dados e modelagem**, mantendo avaliação objetiva e reprodutível.
 
-No pré-processamento, adotou-se: leitura da base, amostragem estratificada opcional, separação entre variáveis preditoras e alvo, divisão treino/teste estratificada (`80/20`) e codificação categórica via `OneHotEncoder` apenas nas colunas não numéricas. As colunas `diabetes_stage` e `diabetes_risk_score` foram removidas por representarem informação fortemente ligada ao próprio desfecho, reduzindo risco de enviesamento da avaliação.
+No pré-processamento foi mantida a amostragem estratificada (quando aplicável), garantindo representatividade da classe-alvo ao reduzir a base:
 
 ```python
 if n_samples < len(df):
@@ -52,20 +52,104 @@ if n_samples < len(df):
     )
 ```
 
-Na modelagem, optou-se por `Pipeline` para padronizar o fluxo e preservar reprodutibilidade. A seleção de atributos é embarcada com `SelectFromModel` + `RandomForestClassifier` (`threshold="1.2*median"`), seguida de padronização quando necessário. Foram definidos três classificadores (`KNN`, `SVM` e `DecisionTree`), em consonância com o enunciado.
+Para atender ao enunciado sem inflar a quantidade de artefatos, foi implementada uma EDA mínima com um resumo tabular da base e um gráfico de distribuição da classe-alvo, essa visão inicial já caracteriza a base e o balanceamento do alvo, servindo de suporte para as decisões de modelagem apresentados a seguir:
 
 ```python
-def get_knn_pipeline() -> Pipeline:
-    return Pipeline(
-        steps=[
-            ("feature_selection", _get_feature_selector()),
-            ("scaler", StandardScaler()),
-            ("model", KNeighborsClassifier()),
-        ]
+resumo_exploratorio = pd.DataFrame(
+    [{
+        "total_registros": int(len(df)),
+        "total_atributos": int(df.shape[1]),
+        "atributos_numericos": int(df.select_dtypes(include=[np.number]).shape[1]),
+        "atributos_categoricos": int(df.select_dtypes(exclude=[np.number]).shape[1]),
+        "classe_positiva_pct": float((df["diagnosed_diabetes"] == 1).mean() * 100),
+    }]
+)
+```
+
+No `main.py`, a função `_run_data_quality_assessment` consolida integridade da base em um único resumo com: total de ausentes, total de duplicados, proporção da classe positiva e maior percentual de outliers por IQR. A avaliação de qualidade continua formal, mas enxuta, reduzindo excesso de artefatos e mantendo rastreabilidade para decisões de processamento. Quando aplicável, as decisões de tratamento são tomadas a partir desses indicadores, nesta base/amostra atual, os resultados indicaram ausência de valores faltantes e duplicatas, não exigindo imputação ou deduplicação adicional nesta etapa.
+
+```python
+    quality_summary = {
+        "total_ausentes": float(missing_total),
+        "total_duplicados": float(duplicate_count),
+        "proporcao_classe_positiva_pct": float(positive_class_ratio),
+        "atributo_maior_outlier": feature_with_max_outlier,
+        "maior_outlier_pct_iqr": float(max_outlier_pct),
+    }
+```
+
+A função `_evaluate_models` treina `KNN`, `SVM` e `DecisionTree` sob o mesmo protocolo, calcula `accuracy`, `precision`, `recall`, `f1-score`, componentes da matriz de confusão e adiciona validação cruzada estratificada para robustez. A avaliação multimensura evita decisões baseadas só em acurácia e permite observar o equilíbrio dos erros por matriz de confusão.
+
+```python
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores = cross_val_score(
+        pipeline,
+        X_train,
+        y_train,
+        cv=cv,
+        scoring="f1",
     )
 ```
 
-As decisões acima foram justificadas por critérios técnicos e empíricos: preservação da proporção de classes, prevenção de vazamento de informação, comparabilidade entre algoritmos e redução de dimensionalidade para favorecer generalização.
+```python
+    rows.append(
+        {
+            "modelo": model_name,
+            "f1_cv_media": float(np.mean(cv_scores)),
+            "f1_cv_desvio": float(np.std(cv_scores)),
+            "accuracy": accuracy_score(y_test, y_pred),
+            "precision": precision_score(y_test, y_pred, zero_division=0),
+            "recall": recall_score(y_test, y_pred, zero_division=0),
+            "f1_score": f1_score(y_test, y_pred, zero_division=0),
+            "verdadeiro_negativo": int(cm[0, 0]),
+            "falso_positivo": int(cm[0, 1]),
+            "falso_negativo": int(cm[1, 0]),
+            "verdadeiro_positivo": int(cm[1, 1]),
+        }
+)
+```
+
+Para manter o foco pedagógico em modelagem, a discussão final é feita a partir das tabelas e matrizes de confusão geradas: comparação dos `f1_cv_media` e `f1_score`, análise de falsos positivos/falsos negativos e leitura dos `top3_atributos` por modelo. Isso mantém a entrega enxuta e suficiente para discutir decisões metodológicas sem excesso de visualizações.
+
+
+## Resultados
+
+Os resultados abaixo referem-se à execução com `n_samples=5000`, seguindo o protocolo implementado no `main.py`.
+
+- Total de registros analisados: `5000`
+- Valores ausentes: `0`
+- Registros duplicados: `0`
+- Proporção da classe positiva (`diagnosed_diabetes = 1`): `60.0%`
+- Atributo com maior percentual de outliers (IQR): `hypertension_history` (`24.94%`)
+
+### Comparação quantitativa dos modelos
+
+| Modelo | F1 (CV média) | F1 (teste) | Accuracy | Precision | Recall |
+|---|---:|---:|---:|---:|---:|
+| SVM | 0.8860 | **0.8692** | **0.8510** | **0.9184** | 0.8250 |
+| DecisionTree | **0.8885** | 0.8623 | 0.8330 | 0.8532 | **0.8717** |
+| KNN | 0.8361 | 0.8246 | 0.7920 | 0.8345 | 0.8150 |
+
+Top-3 atributos mais relevantes (comum aos modelos nesta execução): `hba1c`, `glucose_postprandial`, `glucose_fasting`.
+
+### Visualizações
+
+<p align="center">
+    <img src="Diabetes-Classification/outputs/plots/distribuicao_classe_alvo.png" alt="Distribuição da Classe-Alvo" width="550px">
+</p>
+
+<p align="center">
+    <img src="Diabetes-Classification/outputs/plots/cm_SVM.png" alt="Matriz de Confusão - SVM" width="32%">
+    <img src="Diabetes-Classification/outputs/plots/cm_DecisionTree.png" alt="Matriz de Confusão - DecisionTree" width="32%">
+    <img src="Diabetes-Classification/outputs/plots/cm_KNN.png" alt="Matriz de Confusão - KNN" width="32%">
+</p>
+
+
+1. `SVM` apresentou o melhor equilíbrio no conjunto de teste, com maior `F1-score` e maior `accuracy`.
+2. `DecisionTree` teve melhor média de `F1` na validação cruzada e maior `recall`, indicando maior sensibilidade para detectar casos positivos.
+3. `KNN` ficou abaixo dos demais nas métricas gerais para este cenário.
+4. A consistência dos atributos `hba1c`, `glucose_postprandial` e `glucose_fasting` reforça sua relevância clínica na predição.
+5. Como encaminhamento metodológico, a escolha final do modelo deve considerar o trade-off entre `precision` e `recall` conforme o objetivo prático (minimizar falsos positivos ou falsos negativos).
 
 
 ## Como Executar
@@ -80,28 +164,16 @@ Execução do pipeline atual:
 
 ```bash
 cd Diabetes-Classification
-python src/main.py
+python src/main.py --n-samples 5000
 ```
 
-Observação: `src/main.py` é interativo e solicita a quantidade de amostras e o modelo a ser avaliado.
+Ao final da execução, são gerados artefatos em `Diabetes-Classification/outputs/`:
 
-Teste rápido do pré-processamento:
-
-```bash
-cd Diabetes-Classification
-python - <<'PY'
-from src.preprocessing import load_and_prepare_data
-
-X_train, X_test, y_train, y_test, feature_names = load_and_prepare_data(
-    path="data/diabetes_dataset.csv",
-    n_samples=20000,
-)
-
-print("Treino:", X_train.shape)
-print("Teste:", X_test.shape)
-print("Atributos finais:", len(feature_names))
-PY
-```
+- `tables/resumo_exploratorio.csv`
+- `tables/resumo_qualidade_dados.csv`
+- `tables/comparacao_modelos.csv`
+- `plots/distribuicao_classe_alvo.png`
+- `plots/cm_KNN.png`, `plots/cm_SVM.png`, `plots/cm_DecisionTree.png`
 
 
 

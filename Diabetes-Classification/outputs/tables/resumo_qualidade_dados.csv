@@ -1,0 +1,2 @@
+total_registros,total_ausentes,total_duplicados,proporcao_classe_positiva_pct,atributo_maior_outlier,maior_outlier_pct_iqr
+5000.0,0.0,0.0,60.0,hypertension_history,24.94

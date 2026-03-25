@@ -2,20 +2,29 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-
-def load_and_prepare_data(path, n_samples):
-    df = pd.read_csv(path) 
-    print(f"Dataset original: {len(df)} linhas")
-    # Amostragem estratificada
+def sample_stratified_df(
+    df: pd.DataFrame,
+    n_samples: int,
+    target_col: str = "diagnosed_diabetes",
+    random_state: int = 42,
+) -> pd.DataFrame:
     if n_samples < len(df):
         df, _ = train_test_split(
             df,
             train_size=n_samples,
-            stratify=df["diagnosed_diabetes"],
-            random_state=42
+            stratify=df[target_col],
+            random_state=random_state,
         )
-    df = df.reset_index(drop=True)
-    print(f"Dataset reduzido: {len(df)} linhas")
+    return df.reset_index(drop=True)
+
+def load_raw_data(path: str, n_samples: int) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    print(f"Dataset original: {len(df)} linhas")
+    sampled_df = sample_stratified_df(df=df, n_samples=n_samples)
+    print(f"Dataset reduzido: {len(sampled_df)} linhas")
+    return sampled_df
+
+def prepare_features(df: pd.DataFrame):
     # Separar atributos e alvo
     X = df.drop(columns=[
         "diagnosed_diabetes",
@@ -67,3 +76,8 @@ def load_and_prepare_data(path, n_samples):
         y_test,
         feature_names,
     )
+
+
+def load_and_prepare_data(path, n_samples):
+    df = load_raw_data(path=path, n_samples=n_samples)
+    return prepare_features(df)
