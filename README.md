@@ -96,7 +96,7 @@ if n_samples < len(df):
   )
 ```
 
-Adicionalmente, o trecho abaixo define explicitamente o alvo do problema, removendo colunas não utilizadas e aplica *particionamento estratificado para avaliação mais consistente.
+Adicionalmente, o trecho abaixo define explicitamente o alvo do problema, removendo colunas não utilizadas e aplica particionamento estratificado para avaliação mais consistente.
 
 
 ```python
@@ -127,10 +127,25 @@ def _get_feature_selector() -> SelectFromModel:
     )
     return SelectFromModel(
         estimator=selector_estimator,
-        threshold="median",
+        threshold="median", 
     )
 ```
 
+## Metodologia Experimental
+
+Com base nas ferramentes disponibilizadas pela biblioteca `scikit-learn`, optou-se por implementar os algoritmos de classificação que seriam avaliados através do `Pipeline`, este que permite aplicar sequencialmente uma lista de transformadores para pré-processar os dados e, se desejado, concluir a sequência com um preditor final para modelagem preditiva. A seguir denota-se um trecho exemplificando como a implementação rege-se:
+
+```python
+def get_knn_pipeline() -> Pipeline:
+    # retorna o pipeline de classificação com KNN.
+    return Pipeline(
+        steps=[
+            ("feature_selection", _get_feature_selector()),
+            ("scaler", StandardScaler()),
+            ("model", KNeighborsClassifier()),
+        ]
+    )
+```
 
 
 ## Como Executar 
