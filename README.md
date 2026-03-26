@@ -7,7 +7,7 @@ Diabetes Classification
 </h1>
 
 <h3 align="center">
-Desenvolvimento de um experimento que contempla análise e compreensão dos dados, desde pré-processamento à definição de uma metodologia experimental adequada para a classificação de pacientes com Diabete.
+Desenvolvimento de um experimento que contempla análise e compreensão dos dados, desde pré-processamento à definição de uma metodologia experimental adequada para a classificação de pacientes com Diabetes.
 </h3>
 
 <div align="center">
@@ -31,7 +31,7 @@ Desenvolvimento de um experimento que contempla análise e compreensão dos dado
 
 ## Projeto e Base de Dados
 
-Segundo José Antonio Miguel Marcondes (2003), o diabete afeta aproximadamente dez milhões de brasileiros e sua incidência vem aumentando, sobretudo no diabetes tipo 2. Nesse contexto, a classificação de pacientes é relevante para suporte a ações de prevenção e acompanhamento.
+Segundo José Antonio Miguel Marcondes (2003), o diabete afeta aproximadamente dez milhões de brasileiros e sua incidência vem aumentando, sobretudo no diabetes tipo 2. Nesse contexto, a classificação de pacientes é relevante para apoiar ações de prevenção e acompanhamento.
 
 Este trabalho, desenvolvido na disciplina de Inteligência Computacional, utiliza a base pública **Diabetes Health Indicators Dataset** (Kaggle), com `100.000` registros e `31` atributos, para um problema de **classificação binária** cujo alvo é `diagnosed_diabetes` (`0` ou `1`). A base reúne variáveis sociodemográficas, hábitos de vida, histórico clínico e biomarcadores, o que a torna adequada ao enunciado por conter atributos heterogêneos e permitir uma metodologia experimental realista.
 
@@ -39,7 +39,7 @@ Com base nas dificuldades que serão apresentadas posteriormente, necessitou-se 
 
 ## Metodologia Adotada e Consolidação no Código
 
-As implementações principais estão em `Diabetes-Classification/src/preprocessing.py`, `Diabetes-Classification/src/models.py` e `Diabetes-Classification/src/main.py`. O fluxo foi simplificado para priorizar o que o enunciado e a orientação docente cobram com maior ênfase que é processamento dos dados e modelagem, mantendo avaliação objetiva e reprodutível. No pré-processamento foi mantida a amostragem estratificada (quando aplicável), garantindo representatividade da classe-alvo ao reduzir a base:
+As implementações principais estão em `Diabetes-Classification/src/preprocessing.py`, `Diabetes-Classification/src/models.py` e `Diabetes-Classification/src/main.py`. O fluxo foi simplificado para priorizar o que o enunciado e a orientação docente cobram com maior ênfase: processamento dos dados e modelagem, mantendo avaliação objetiva e reprodutível. No pré-processamento, foi mantida a amostragem estratificada (quando aplicável), garantindo representatividade da classe-alvo ao reduzir a base:
 
 ```python
 if n_samples < len(df):
@@ -51,7 +51,7 @@ if n_samples < len(df):
     )
 ```
 
-Para atender ao enunciado sem inflar a quantidade de artefatos, foi implementada uma EDA mínima com um resumo tabular da base e um gráfico de distribuição da classe-alvo, essa visão inicial já caracteriza a base e o balanceamento do alvo, servindo de suporte para as decisões de modelagem apresentados a seguir:
+Para atender ao enunciado sem inflar a quantidade de artefatos, foi implementada uma EDA mínima com um resumo tabular da base e um gráfico de distribuição da classe-alvo. Essa visão inicial já caracteriza a base e o balanceamento do alvo, servindo de suporte para as decisões de modelagem apresentadas a seguir:
 
 ```python
 resumo_exploratorio = pd.DataFrame(
@@ -65,7 +65,7 @@ resumo_exploratorio = pd.DataFrame(
 )
 ```
 
-No `main.py`, a função `_run_data_quality_assessment` consolida integridade da base em um único resumo com total de ausentes, total de duplicados, proporção da classe positiva e maior percentual de outliers por IQR. A avaliação de qualidade continua formal, mas enxuta, reduzindo excesso de artefatos e mantendo rastreabilidade para decisões de processamento. Quando aplicável, as decisões de tratamento são tomadas a partir desses indicadores, nesta base/amostra atual, os resultados indicaram ausência de valores faltantes e duplicatas, não exigindo imputação ou deduplicação adicional nesta etapa.
+No `main.py`, a função `_run_data_quality_assessment` consolida a integridade da base em um único resumo com total de ausentes, total de duplicados, proporção da classe positiva e maior percentual de outliers por IQR. A avaliação de qualidade continua formal, mas enxuta, reduzindo excesso de artefatos e mantendo rastreabilidade para decisões de processamento. Quando aplicável, as decisões de tratamento são tomadas a partir desses indicadores; nesta base/amostra atual, os resultados indicaram ausência de valores faltantes e duplicatas, não exigindo imputação ou deduplicação adicional nesta etapa.
 
 ```python
     quality_summary = {
@@ -109,7 +109,11 @@ A função `_evaluate_models` treina `KNN`, `SVM` e `DecisionTree` sob o mesmo p
 )
 ```
 
-Para manter o foco pedagógico em modelagem, a discussão final é feita a partir das tabelas e matrizes de confusão geradas como comparação dos `f1_cv_media` e `f1_score`, análise de falsos positivos/falsos negativos e leitura dos `top3_atributos` por modelo. Isso mantém a entrega enxuta e suficiente para discutir decisões metodológicas sem excesso de visualizações.
+Para manter o foco pedagógico em modelagem, a discussão final é feita a partir das tabelas e matrizes de confusão geradas, com comparação dos `f1_cv_media` e `f1_score`, análise de falsos positivos/falsos negativos e leitura dos `top3_atributos` por modelo. Isso mantém a entrega enxuta e suficiente para discutir decisões metodológicas sem excesso de visualizações.
+
+### Detalhamento da justiça experimental
+
+Para reduzir viés de avaliação, todos os modelos são submetidos ao mesmo protocolo: mesma base amostrada, mesma estratégia de divisão estratificada e mesma rotina de validação cruzada. Além disso, são feitas `3` repetições com sementes diferentes (`42`, `43`, `44`), e as métricas finais são reportadas por média. Dessa forma, evita-se que a comparação entre algoritmos dependa de uma única partição favorável/desfavorável.
 
 
 ## Resultados
@@ -144,6 +148,8 @@ Top-3 atributos mais relevantes (comum aos modelos nesta execução): `hba1c`, `
     <img src="Diabetes-Classification/outputs/plots/cm_KNN.png" alt="Matriz de Confusão - KNN" width="32%">
 </p>
 
+
+### Discussão e Conclusão
 
 1. `SVM` apresentou o melhor equilíbrio nas métricas médias de teste, com maior `F1-score` e maior `accuracy` após 3 repetições.
 2. `DecisionTree` teve melhor média de `F1` na validação cruzada e maior `recall`, indicando maior sensibilidade para detectar casos positivos.
