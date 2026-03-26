@@ -35,12 +35,11 @@ Segundo José Antonio Miguel Marcondes (2003), o diabete afeta aproximadamente d
 
 Este trabalho, desenvolvido na disciplina de Inteligência Computacional, utiliza a base pública **Diabetes Health Indicators Dataset** (Kaggle), com `100.000` registros e `31` atributos, para um problema de **classificação binária** cujo alvo é `diagnosed_diabetes` (`0` ou `1`). A base reúne variáveis sociodemográficas, hábitos de vida, histórico clínico e biomarcadores, o que a torna adequada ao enunciado por conter atributos heterogêneos e permitir uma metodologia experimental realista.
 
+Com base nas dificuldades que serão apresentadas posteriormente, necessitou-se da aplicação de etapas de pré-processamento, dentre elas a codificação de atributos categóricos (através do `OneHotEncoder` da biblioteca `sklearn`), a separação estratificada entre treino e teste, a padronização de atributos numéricos para modelos sensíveis à escala (`KNN` e `SVM`) e a seleção embarcada de atributos com `SelectFromModel` + `RandomForestClassifier`. Em conjunto, essas etapas reduziram ruído, preservaram representatividade da classe-alvo e melhoraram a comparabilidade entre os classificadores.
 
 ## Metodologia Adotada e Consolidação no Código
 
-As implementações principais estão em `Diabetes-Classification/src/preprocessing.py`, `Diabetes-Classification/src/models.py` e `Diabetes-Classification/src/main.py`. O fluxo foi simplificado para priorizar o que o enunciado e a orientação docente cobram com maior ênfase: **processamento dos dados e modelagem**, mantendo avaliação objetiva e reprodutível.
-
-No pré-processamento foi mantida a amostragem estratificada (quando aplicável), garantindo representatividade da classe-alvo ao reduzir a base:
+As implementações principais estão em `Diabetes-Classification/src/preprocessing.py`, `Diabetes-Classification/src/models.py` e `Diabetes-Classification/src/main.py`. O fluxo foi simplificado para priorizar o que o enunciado e a orientação docente cobram com maior ênfase que é processamento dos dados e modelagem, mantendo avaliação objetiva e reprodutível. No pré-processamento foi mantida a amostragem estratificada (quando aplicável), garantindo representatividade da classe-alvo ao reduzir a base:
 
 ```python
 if n_samples < len(df):
@@ -66,7 +65,7 @@ resumo_exploratorio = pd.DataFrame(
 )
 ```
 
-No `main.py`, a função `_run_data_quality_assessment` consolida integridade da base em um único resumo com: total de ausentes, total de duplicados, proporção da classe positiva e maior percentual de outliers por IQR. A avaliação de qualidade continua formal, mas enxuta, reduzindo excesso de artefatos e mantendo rastreabilidade para decisões de processamento. Quando aplicável, as decisões de tratamento são tomadas a partir desses indicadores, nesta base/amostra atual, os resultados indicaram ausência de valores faltantes e duplicatas, não exigindo imputação ou deduplicação adicional nesta etapa.
+No `main.py`, a função `_run_data_quality_assessment` consolida integridade da base em um único resumo com total de ausentes, total de duplicados, proporção da classe positiva e maior percentual de outliers por IQR. A avaliação de qualidade continua formal, mas enxuta, reduzindo excesso de artefatos e mantendo rastreabilidade para decisões de processamento. Quando aplicável, as decisões de tratamento são tomadas a partir desses indicadores, nesta base/amostra atual, os resultados indicaram ausência de valores faltantes e duplicatas, não exigindo imputação ou deduplicação adicional nesta etapa.
 
 ```python
     quality_summary = {
@@ -78,10 +77,11 @@ No `main.py`, a função `_run_data_quality_assessment` consolida integridade da
     }
 ```
 
-A função `_evaluate_models` treina `KNN`, `SVM` e `DecisionTree` sob o mesmo protocolo, calcula `accuracy`, `precision`, `recall`, `f1-score`, componentes da matriz de confusão e adiciona validação cruzada estratificada para robustez. A avaliação multimensura evita decisões baseadas só em acurácia e permite observar o equilíbrio dos erros por matriz de confusão.
+A função `_evaluate_models` treina `KNN`, `SVM` e `DecisionTree` sob o mesmo protocolo, calcula `accuracy`, `precision`, `recall`, `f1-score`, componentes da matriz de confusão e adiciona validação cruzada estratificada para robustez. Para justiça experimental, cada modelo é avaliado em **3 repetições** com sementes distintas e as métricas finais são reportadas por **média**, reduzindo viés de uma única partição treino/teste.
 
 ```python
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    repeat_seed = 42 + repeat_index
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=repeat_seed)
     cv_scores = cross_val_score(
         pipeline,
         X_train,
@@ -95,26 +95,26 @@ A função `_evaluate_models` treina `KNN`, `SVM` e `DecisionTree` sob o mesmo p
     rows.append(
         {
             "modelo": model_name,
-            "f1_cv_media": float(np.mean(cv_scores)),
-            "f1_cv_desvio": float(np.std(cv_scores)),
-            "accuracy": accuracy_score(y_test, y_pred),
-            "precision": precision_score(y_test, y_pred, zero_division=0),
-            "recall": recall_score(y_test, y_pred, zero_division=0),
-            "f1_score": f1_score(y_test, y_pred, zero_division=0),
-            "verdadeiro_negativo": int(cm[0, 0]),
-            "falso_positivo": int(cm[0, 1]),
-            "falso_negativo": int(cm[1, 0]),
-            "verdadeiro_positivo": int(cm[1, 1]),
+            "f1_cv_media": float(np.mean(stats["f1_cv_media"])),
+            "f1_cv_desvio": float(np.mean(stats["f1_cv_desvio"])),
+            "accuracy": float(np.mean(stats["accuracy"])),
+            "precision": float(np.mean(stats["precision"])),
+            "recall": float(np.mean(stats["recall"])),
+            "f1_score": float(np.mean(stats["f1_score"])),
+            "verdadeiro_negativo": int(cm_sum[0, 0]),
+            "falso_positivo": int(cm_sum[0, 1]),
+            "falso_negativo": int(cm_sum[1, 0]),
+            "verdadeiro_positivo": int(cm_sum[1, 1]),
         }
 )
 ```
 
-Para manter o foco pedagógico em modelagem, a discussão final é feita a partir das tabelas e matrizes de confusão geradas: comparação dos `f1_cv_media` e `f1_score`, análise de falsos positivos/falsos negativos e leitura dos `top3_atributos` por modelo. Isso mantém a entrega enxuta e suficiente para discutir decisões metodológicas sem excesso de visualizações.
+Para manter o foco pedagógico em modelagem, a discussão final é feita a partir das tabelas e matrizes de confusão geradas como comparação dos `f1_cv_media` e `f1_score`, análise de falsos positivos/falsos negativos e leitura dos `top3_atributos` por modelo. Isso mantém a entrega enxuta e suficiente para discutir decisões metodológicas sem excesso de visualizações.
 
 
 ## Resultados
 
-Os resultados abaixo referem-se à execução com `n_samples=5000`, seguindo o protocolo implementado no `main.py`.
+Os resultados abaixo referem-se à execução com `n_samples=5000` e `n_repeats=3`, seguindo o protocolo implementado no `main.py`.
 
 - Total de registros analisados: `5000`
 - Valores ausentes: `0`
@@ -126,9 +126,9 @@ Os resultados abaixo referem-se à execução com `n_samples=5000`, seguindo o p
 
 | Modelo | F1 (CV média) | F1 (teste) | Accuracy | Precision | Recall |
 |---|---:|---:|---:|---:|---:|
-| SVM | 0.8860 | **0.8692** | **0.8510** | **0.9184** | 0.8250 |
-| DecisionTree | **0.8885** | 0.8623 | 0.8330 | 0.8532 | **0.8717** |
-| KNN | 0.8361 | 0.8246 | 0.7920 | 0.8345 | 0.8150 |
+| SVM | 0.8816 | **0.8858** | **0.8680** | **0.9198** | 0.8544 |
+| DecisionTree | **0.8863** | 0.8800 | 0.8543 | 0.8702 | **0.8900** |
+| KNN | 0.8313 | 0.8376 | 0.8063 | 0.8426 | 0.8328 |
 
 Top-3 atributos mais relevantes (comum aos modelos nesta execução): `hba1c`, `glucose_postprandial`, `glucose_fasting`.
 
@@ -145,9 +145,9 @@ Top-3 atributos mais relevantes (comum aos modelos nesta execução): `hba1c`, `
 </p>
 
 
-1. `SVM` apresentou o melhor equilíbrio no conjunto de teste, com maior `F1-score` e maior `accuracy`.
+1. `SVM` apresentou o melhor equilíbrio nas métricas médias de teste, com maior `F1-score` e maior `accuracy` após 3 repetições.
 2. `DecisionTree` teve melhor média de `F1` na validação cruzada e maior `recall`, indicando maior sensibilidade para detectar casos positivos.
-3. `KNN` ficou abaixo dos demais nas métricas gerais para este cenário.
+3. `KNN` ficou abaixo dos demais nas métricas médias para este cenário.
 4. A consistência dos atributos `hba1c`, `glucose_postprandial` e `glucose_fasting` reforça sua relevância clínica na predição.
 5. Como encaminhamento metodológico, a escolha final do modelo deve considerar o trade-off entre `precision` e `recall` conforme o objetivo prático (minimizar falsos positivos ou falsos negativos).
 
@@ -164,7 +164,7 @@ Execução do pipeline atual:
 
 ```bash
 cd Diabetes-Classification
-python src/main.py --n-samples 5000
+python src/main.py --n-samples 5000 --n-repeats 3
 ```
 
 Ao final da execução, são gerados artefatos em `Diabetes-Classification/outputs/`:

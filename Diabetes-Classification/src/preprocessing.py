@@ -24,7 +24,7 @@ def load_raw_data(path: str, n_samples: int) -> pd.DataFrame:
     print(f"Dataset reduzido: {len(sampled_df)} linhas")
     return sampled_df
 
-def prepare_features(df: pd.DataFrame):
+def prepare_features(df: pd.DataFrame, random_state: int = 42):
     # Separar atributos e alvo
     X = df.drop(columns=[
         "diagnosed_diabetes",
@@ -37,7 +37,7 @@ def prepare_features(df: pd.DataFrame):
         X, y,
         test_size=0.2,
         stratify=y,
-        random_state=42
+        random_state=random_state
     )
     # Separa colunas categóricas e numéricas para evitar one-hot em variáveis contínuas.
     categorical_cols = X_train.select_dtypes(

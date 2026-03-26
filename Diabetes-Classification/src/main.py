@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import Counter
 import argparse
 from pathlib import Path
 import matplotlib
@@ -119,68 +120,97 @@ def _run_data_quality_assessment(
 
 
 def _evaluate_models(
-	X_train: np.ndarray,
-	X_test: np.ndarray,
-	y_train: np.ndarray,
-	y_test: np.ndarray,
-	feature_names: list[str],
+	raw_df: pd.DataFrame,
+	n_repeats: int,
 	output_dirs: dict[str, Path],
 ) -> pd.DataFrame:
 	models = get_all_models()
+	model_stats: dict[str, dict[str, object]] = {}
+
+	for model_name in models.keys():
+		model_stats[model_name] = {
+			"accuracy": [],
+			"precision": [],
+			"recall": [],
+			"f1_score": [],
+			"f1_cv_media": [],
+			"f1_cv_desvio": [],
+			"cm_sum": np.zeros((2, 2), dtype=int),
+			"top3_list": [],
+		}
+
+	for repeat_index in range(n_repeats):
+		repeat_seed = 42 + repeat_index
+		print(f"  Repetição {repeat_index + 1}/{n_repeats} (seed={repeat_seed})")
+
+		X_train, X_test, y_train, y_test, feature_names = prepare_features(
+			raw_df,
+			random_state=repeat_seed,
+		)
+
+		for model_name, pipeline in get_all_models().items():
+			cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=repeat_seed)
+			cv_scores = cross_val_score(
+				pipeline,
+				X_train,
+				y_train,
+				cv=cv,
+				scoring="f1",
+				n_jobs=None,
+			)
+
+			pipeline.fit(X_train, y_train)
+			y_pred = pipeline.predict(X_test)
+			cm = confusion_matrix(y_test, y_pred)
+
+			feature_importances = get_selected_feature_importances(
+				trained_pipeline=pipeline,
+				feature_names=feature_names,
+			)
+			top3_features = ", ".join(
+				feature_name
+				for feature_name, _ in feature_importances[:3]
+			)
+
+			stats = model_stats[model_name]
+			stats["accuracy"].append(float(accuracy_score(y_test, y_pred)))
+			stats["precision"].append(float(precision_score(y_test, y_pred, zero_division=0)))
+			stats["recall"].append(float(recall_score(y_test, y_pred, zero_division=0)))
+			stats["f1_score"].append(float(f1_score(y_test, y_pred, zero_division=0)))
+			stats["f1_cv_media"].append(float(np.mean(cv_scores)))
+			stats["f1_cv_desvio"].append(float(np.std(cv_scores)))
+			stats["cm_sum"] += cm
+			stats["top3_list"].append(top3_features)
+
 	rows: list[dict[str, float | str]] = []
-
-	for model_name, pipeline in models.items():
-		print(f"Treinando {model_name}...")
-
-		cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-		cv_scores = cross_val_score(
-			pipeline,
-			X_train,
-			y_train,
-			cv=cv,
-			scoring="f1",
-			n_jobs=None,
-		)
-
-		pipeline.fit(X_train, y_train)
-
-		y_pred = pipeline.predict(X_test)
-		cm = confusion_matrix(y_test, y_pred)
-		feature_importances = get_selected_feature_importances(
-			trained_pipeline=pipeline,
-			feature_names=feature_names,
-		)
-		top3_features = ", ".join(
-			feature_name
-			for feature_name, _ in feature_importances[:3]
-		)
+	for model_name, stats in model_stats.items():
+		most_common_top3 = Counter(stats["top3_list"]).most_common(1)[0][0]
+		cm_sum = stats["cm_sum"]
 
 		rows.append(
 			{
 				"modelo": model_name,
-				"top3_atributos": top3_features,
-				"f1_cv_media": float(np.mean(cv_scores)),
-				"f1_cv_desvio": float(np.std(cv_scores)),
-				"accuracy": accuracy_score(y_test, y_pred),
-				"precision": precision_score(y_test, y_pred, zero_division=0),
-				"recall": recall_score(y_test, y_pred, zero_division=0),
-				"f1_score": f1_score(y_test, y_pred, zero_division=0),
-				"verdadeiro_negativo": int(cm[0, 0]),
-				"falso_positivo": int(cm[0, 1]),
-				"falso_negativo": int(cm[1, 0]),
-				"verdadeiro_positivo": int(cm[1, 1]),
+				"top3_atributos": most_common_top3,
+				"f1_cv_media": float(np.mean(stats["f1_cv_media"])),
+				"f1_cv_desvio": float(np.mean(stats["f1_cv_desvio"])),
+				"accuracy": float(np.mean(stats["accuracy"])),
+				"precision": float(np.mean(stats["precision"])),
+				"recall": float(np.mean(stats["recall"])),
+				"f1_score": float(np.mean(stats["f1_score"])),
+				"verdadeiro_negativo": int(cm_sum[0, 0]),
+				"falso_positivo": int(cm_sum[0, 1]),
+				"falso_negativo": int(cm_sum[1, 0]),
+				"verdadeiro_positivo": int(cm_sum[1, 1]),
 			}
 		)
 
 		fig_cm, ax_cm = plt.subplots(figsize=(6, 5))
-		ConfusionMatrixDisplay.from_predictions(
-			y_test,
-			y_pred,
+		disp = ConfusionMatrixDisplay(
+			confusion_matrix=cm_sum,
 			display_labels=["Não Diabetes", "Diabetes"],
-			ax=ax_cm,
-			cmap="Blues",
 		)
-		ax_cm.set_title(f"Matriz de Confusão - {model_name}")
+		disp.plot(ax=ax_cm, cmap="Blues", colorbar=False)
+		ax_cm.set_title(f"Matriz de Confusão Acumulada - {model_name}")
 		ax_cm.set_xlabel("Predição")
 		ax_cm.set_ylabel("Valor Real")
 		fig_cm.tight_layout()
@@ -209,6 +239,12 @@ def main() -> None:
 		default="outputs",
 		help="Diretório para salvar tabelas e gráficos.",
 	)
+	parser.add_argument(
+		"--n-repeats",
+		type=int,
+		default=3,
+		help="Quantidade de repetições do experimento para média das métricas.",
+	)
 	args = parser.parse_args()
 
 	project_root = Path(__file__).resolve().parents[1]
@@ -224,14 +260,12 @@ def main() -> None:
 	print("[3/4] Avaliando qualidade dos dados e pré-processamento...")
 	_run_data_quality_assessment(df=raw_df, output_dirs=output_dirs)
 
-	print("[4/4] Treinando modelos e avaliando métricas (com validação cruzada)...")
-	X_train, X_test, y_train, y_test, feature_names = prepare_features(raw_df)
+	print(
+		f"[4/4] Treinando modelos e avaliando métricas (com validação cruzada e {args.n_repeats} repetições)..."
+	)
 	comparison_df = _evaluate_models(
-		X_train=X_train,
-		X_test=X_test,
-		y_train=y_train,
-		y_test=y_test,
-		feature_names=feature_names,
+		raw_df=raw_df,
+		n_repeats=args.n_repeats,
 		output_dirs=output_dirs,
 	)
 
