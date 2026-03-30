@@ -160,17 +160,24 @@ Top-3 atributos mais relevantes (comum aos modelos nesta execução): `hba1c`, `
 
 ## Como Executar
 
-Instalação de dependências:
+Use o script `run_project.sh`, que instala as dependências automaticamente via `requirements.txt` e executa o projeto.
+
+Execução padrão:
 
 ```bash
-pip install pandas numpy scikit-learn
+./run_project.sh
 ```
 
-Execução do pipeline atual:
+Execução com parâmetros (opcional):
 
 ```bash
-cd Diabetes-Classification
-python src/main.py --n-samples 5000 --n-repeats 3
+./run_project.sh --n-samples 5000 --n-repeats 3
+```
+
+Obs.: se necessário, garanta permissão de execução do script:
+
+```bash
+chmod +x run_project.sh
 ```
 
 Ao final da execução, são gerados artefatos em `Diabetes-Classification/outputs/`:
